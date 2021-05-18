@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import { writeFile, access, readFile } from "fs";
+import { writeFile, access, readFile, unlink } from "fs";
 import Discord, { TextChannel } from "discord.js";
 
 import config from "../configuration.json";
@@ -33,7 +33,12 @@ const getProfileData = async (page: puppeteer.Page, scriptSelector: string): Pro
 	);
 };
 
-const saveToJson = async (commentSelector: string, commentAuthor: string, commentText: string) => {
+const saveToJson = async (
+	page: puppeteer.Page,
+	commentSelector: string,
+	commentAuthor: string,
+	commentText: string
+) => {
 	const commentObj = {
 		author: commentAuthor,
 		message: commentText,
@@ -42,19 +47,33 @@ const saveToJson = async (commentSelector: string, commentAuthor: string, commen
 		if (err) {
 			console.log(err);
 		} else {
+			const commentId = commentSelector.substring(9);
 			const obj = JSON.parse(data);
-			if (!obj.hasOwnProperty(commentSelector)) {
-				obj[`${commentSelector}`] = commentObj;
+			if (!obj.hasOwnProperty(commentId)) {
+				obj[`${commentId}`] = commentObj;
 				writeFile(datasJson, JSON.stringify(obj, null, 2), "utf8", async () => {
 					if (err) {
 						throw new Error("[fs] writeFile error");
 					}
+					await page.evaluate((selector: string) => {
+						const element = document!.querySelector(selector) as HTMLElement;
+						element.style.display = "inline-block";
+					}, commentSelector);
+					const comment = await page.$(commentSelector);
+					await comment!.screenshot({
+						path: "./datas/screenshot.png",
+					});
 					const channel = discordClient.channels.cache.find((ch) => ch.id === config.channelId);
 					if (channel!.isText()) {
-						(channel as TextChannel).send(
-							`Nouveau commentaire sur le profil de ${profileData.personaname}:\n*${commentText} — ${commentAuthor}*`
-						);
+						await (channel as TextChannel).send(`Nouveau commentaire sur le profil de ${profileData.personaname}:\n`, {
+							files: ["./datas/screenshot.png"],
+						});
 					}
+					unlink("./datas/screenshot.png", (error) => {
+						if (error) {
+							throw new Error("[fs] unlink error");
+						}
+					});
 				});
 			}
 		}
@@ -93,10 +112,7 @@ const getProfileComments = async (page: puppeteer.Page, commentsSelector: string
 				const commentAuthor = await comment!.evaluate((domElement) => {
 					return domElement.querySelectorAll("bdi")[0].innerText;
 				});
-				await saveToJson(commentSelector.substring(9), commentAuthor, commentText);
-				// await comment!.screenshot({
-				// 	path: `./datas/${commentSelector}.png`,
-				// });
+				await saveToJson(page, commentSelector, commentAuthor, commentText);
 			}
 		}
 	}
@@ -104,9 +120,9 @@ const getProfileComments = async (page: puppeteer.Page, commentsSelector: string
 
 const getTime = () => {
 	const now = new Date();
-	return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()} ${
-		(now.getHours() < 10 ? "0" : "") + now.getHours()
-	}:${(now.getMinutes() < 10 ? "0" : "") + now.getMinutes()}`;
+	return `${now.getFullYear()}-${(now.getMonth() < 10 ? "0" : "") + now.getMonth()}-${
+		(now.getDate() < 10 ? "0" : "") + now.getDate()
+	} ${(now.getHours() < 10 ? "0" : "") + now.getHours()}:${(now.getMinutes() < 10 ? "0" : "") + now.getMinutes()}`;
 };
 
 const scrap = async () => {
@@ -130,29 +146,6 @@ const scrap = async () => {
 const process = async () => {
 	await initiate();
 	await discordClient.login(config.botToken);
-	discordClient.on("message", (message) => {
-		if (message.content === "!valvot") {
-			message.reply(
-				"Salut! Je récupère les commentaires des profils Steam toutes les minutes et je les partages ici :D"
-			);
-		}
-		if (message.content === "!clear") {
-			if (message!.member!.hasPermission("MANAGE_MESSAGES")) {
-				message.channel.messages.fetch().then(
-					(list: any) => {
-						if (message.channel instanceof TextChannel) {
-							message.channel.bulkDelete(list);
-						}
-					},
-					(_err: any) => {
-						message.channel.send("ERROR: ERROR CLEARING CHANNEL.");
-					}
-				);
-			} else {
-				message.channel.send("Tu ne disposes pas de ce droit.");
-			}
-		}
-	});
 	setInterval(() => scrap(), 60000);
 };
 
