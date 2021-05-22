@@ -7,6 +7,7 @@ import ProfileData from "interfaces/profileData";
 
 const datasJson = "./datas/comments.json";
 const discordClient = new Discord.Client();
+let browser: puppeteer.Browser;
 let profileData: ProfileData;
 
 const initiate = async (): Promise<void> => {
@@ -43,7 +44,7 @@ const saveToJson = async (
 		author: commentAuthor,
 		message: commentText,
 	};
-	readFile(datasJson, "utf8", function readFileCallback(err, data) {
+	readFile(datasJson, "utf8", (err, data) => {
 		if (err) {
 			console.log(err);
 		} else {
@@ -126,10 +127,8 @@ const getTime = () => {
 };
 
 const scrap = async () => {
-	const browser = await puppeteer.launch();
-	const page = await browser.newPage();
-
 	for (const url of config.profileUrl) {
+		const page = await browser.newPage();
 		console.log(`[${getTime()}] Checking ${url.replace(/.*\/(\w+)\/?$/, "$1")}`);
 		await page.goto(url);
 
@@ -138,14 +137,14 @@ const scrap = async () => {
 
 		const commentsSelector = `#commentthread_Profile_${profileData.steamid}_posts`;
 		await getProfileComments(page, commentsSelector);
+		await page.close();
 	}
-
-	await browser.close();
 };
 
 const process = async () => {
 	await initiate();
 	await discordClient.login(config.botToken);
+	browser = await puppeteer.launch();
 	setInterval(() => scrap(), 60000);
 };
 
