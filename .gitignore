@@ -1,6 +1,4 @@
-node_modules/
+node_modules
+.env
+build
 package-lock.json
-dist/
-datas/
-configuration.json
-google-vision.json
