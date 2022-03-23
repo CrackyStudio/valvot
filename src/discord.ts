@@ -1,17 +1,17 @@
 import { Client, ClientPresenceStatus, Intents, PresenceStatusData, TextChannel } from "discord.js";
+import { discordBotStatus, discordChannelId } from "./config.json";
 
 class DiscordClient {
   private client: Client = new Client({ intents: [Intents.FLAGS.GUILDS] });
   private channel: TextChannel;
-  private status: PresenceStatusData = process.env.DISCORD_STATUS as ClientPresenceStatus | "invisible";
+  private status: PresenceStatusData = discordBotStatus as ClientPresenceStatus | "invisible";
 
   constructor() {
     this.client.login(process.env.DISCORD_TOKEN);
 
     this.client.once("ready", () => {
       this.setStatus(this.status);
-      this.channel = this.client.channels.cache.get(process.env.DISCORD_CHANNEL_ID) as TextChannel;
-      console.log("Valvot client has been started!");
+      this.channel = this.client.channels.cache.get(discordChannelId) as TextChannel;
     });
   }
 
@@ -23,8 +23,8 @@ class DiscordClient {
     this.channel.send(message);
   };
 
-  public sendPrivateMessage = async (message: string) => {
-    const user = await this.client.users.fetch(process.env.DISCORD_USER_ID);
+  public sendPrivateMessage = async (userId: string, message: string) => {
+    const user = await this.client.users.fetch(userId);
     user.send(message);
   };
 }

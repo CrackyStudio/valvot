@@ -21,8 +21,8 @@ class SteamClient {
     }
   };
 
-  public getNewComments = async (): Promise<string[] | null> => {
-    await this.navigate("https://steamcommunity.com/id/crackystudio/allcomments");
+  public getNewComments = async (profileUrl: string): Promise<string[] | null> => {
+    await this.navigate(profileUrl);
 
     const comments = await (await this.page).evaluate(() => Array.from(document.querySelectorAll(".commentthread_comment"), (element) => element.innerHTML));
     const newComments: string[] = [];
