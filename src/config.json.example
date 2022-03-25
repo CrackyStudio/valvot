@@ -1,11 +1,7 @@
 {
-  "discordBotStatus": "online",
+  "discordBotStatus": "",
   "discordChannelId": "",
   "users": [
-    {
-      "steamProfileUrl": "",
-      "discordUserId": ""
-    },
     {
       "steamProfileUrl": "",
       "discordUserId": ""
