@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import jsdom from "jsdom";
+import { Comment } from "./types";
 
 class SteamClient {
   private browser: Promise<puppeteer.Browser> = puppeteer.launch({
@@ -10,8 +11,23 @@ class SteamClient {
 
   public navigate = async (url: string) => {
     this.page = (await this.browser).newPage();
+    await this.setRequestInterception(true);
     await (await this.page).goto(url);
     console.log(`Navigated to ${url}`);
+  };
+
+  private setRequestInterception = async (enable: boolean) => {
+    if (!enable) {
+      return;
+    }
+    await (await this.page).setRequestInterception(true);
+    (await this.page).on("request", (request) => {
+      if (["image", "stylesheet", "font", "script"].indexOf(request.resourceType()) !== -1) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
   };
 
   public closePage = async (): Promise<void> => {
@@ -21,14 +37,15 @@ class SteamClient {
     }
   };
 
-  public getNewComments = async (profileUrl: string): Promise<string[] | null> => {
+  public getNewComments = async (profileUrl: string): Promise<Comment[] | null> => {
     await this.navigate(profileUrl);
 
+    const username = await (await this.page).evaluate(() => document.querySelector(".persona_name_text_content").textContent.trim());
     const comments = await (await this.page).evaluate(() => Array.from(document.querySelectorAll(".commentthread_comment"), (element) => element.innerHTML));
-    const newComments: string[] = [];
+    const newComments: Comment[] = [];
     const interval = this.interval;
 
-    comments.some((comment) => {
+    comments.some(async (comment) => {
       comment.replace("\\t", "");
       comment.replace("\\n", "");
 
@@ -47,7 +64,7 @@ class SteamClient {
           const commentAuthor = commentDom.querySelector(".commentthread_author_link").textContent.trim();
           const commentAuthorProfile = (<HTMLLinkElement>commentDom.querySelector(".commentthread_author_link")).href;
 
-          newComments.push(`${commentAuthor}: ${commentText} (${commentAuthorProfile})`);
+          newComments.push({ author: commentAuthor, authorUrl: commentAuthorProfile, recipient: username, text: commentText });
         }
       }
     });
