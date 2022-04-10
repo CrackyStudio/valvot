@@ -1,7 +1,7 @@
 import "dotenv/config";
 import DiscordClient from "./discord";
 import SteamClient from "./steam";
-import { users } from "./config.json";
+import { users } from "./config";
 
 const discordClient = new DiscordClient();
 const steamClient = new SteamClient();

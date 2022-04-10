@@ -1,5 +1,5 @@
 import { Client, ClientPresenceStatus, Intents, PresenceStatusData, TextChannel } from "discord.js";
-import { discordBotStatus, discordChannelId } from "./config.json";
+import { discordBotStatus, discordChannelId } from "./config";
 
 class DiscordClient {
   private client: Client = new Client({ intents: [Intents.FLAGS.GUILDS] });
