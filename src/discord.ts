@@ -17,7 +17,7 @@ class DiscordClient {
   }
 
   public setStatus = (status: ClientPresenceStatus | "invisible") => {
-    this.client.user.setStatus(status);
+    this.client.user?.setStatus(status);
   };
 
   public sendMessage = (comment: Comment) => {
